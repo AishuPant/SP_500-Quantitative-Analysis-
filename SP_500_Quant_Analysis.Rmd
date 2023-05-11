@@ -1,0 +1,107 @@
+---
+title: "Quantitative Analysis of S&P 500 Index: A Comprehensive Study"
+author: "Aishwarya Pant (pant.26)"
+date: "2023-05-11"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r}
+#Load necessary libraries
+library(tidyverse)
+library(forecast)
+library(urca)
+library(ggplot2)
+# Load The S&P 500 csv file
+SP_500 <- read_csv("~/Desktop/SP_500.csv")
+```
+```{r}
+# Explore the dataset
+head(SP_500) # Displays the first few rows of data
+
+summary(SP_500) # Summarizes the data
+```
+```{r}
+# Calculate Returns
+
+# Calculates the daily returns using closing price of S&P 500
+returns <- diff(log(SP_500$close))
+print(returns)
+
+# Calculates cumulative returns by multiplying the daily returns (as a decimal) with the previous day's cumulative return.
+cumulative_return <- cumsum(returns)
+print(cumulative_return)
+```
+```{r}
+# Calculate volatility of the S&P 500 index and the Value at Risk (VaR)
+
+# Calculate the volatility 
+volatility <- sd(returns)
+
+# Choose Confidence Level
+confidence_level <- 0.95
+
+# Calculate VaR
+VaR <- -qnorm(1 - confidence_level) * volatility
+
+# Print Results
+cat("Volatility:", volatility, "\n")
+cat("VaR (", confidence_level * 100, "%):", VaR, "\n")
+```
+The calculated volatility of the S&P 500 index is approximately 0.0359 (or 3.59%). Volatility is a measure of the dispersion of returns and indicates the level of risk or uncertainty in the investment. In this case, a higher volatility suggests that the daily returns of the S&P 500 index tend to vary more widely.
+
+The Value at Risk (VaR) at a confidence level of 95% is approximately 0.0590 (or 5.90%). VaR represents the potential maximum loss that can be expected at a given confidence level. In this case, with a 95% confidence level, there is a 5% chance that the daily losses of the S&P 500 index will exceed 5.90%.
+
+```{r}
+# Perform time series analysis on the provided S&P 500 data
+
+# Convert the "Date" column to the appropriate date format:
+SP_500$date <- as.Date(SP_500$date)
+
+# Create a time series object using the "Close" column:
+ts_data <- ts(SP_500$close, frequency = 252) ## Assuming daily data with 252 trading days per year
+
+# Perform seasonal decomposition using STL (Seasonal and Trend decomposition using Loess)
+decomposed <- stl(ts_data, s.window = "periodic")
+
+# Plot the decomposed components:
+plot(decomposed)
+
+# Check for stationarity using the Augmented Dickey-Fuller (ADF) test:
+adf_test <- ur.df(ts_data, type = "drift", lags = 20)
+summary(adf_test) 
+```
+The output of the Augmented Dickey-Fuller (ADF) test provides information about the stationarity of the time series. Here's a breakdown of the key components of the output:
+
+1) Coefficients: This section shows the estimated coefficients for the regression equation used in the ADF test. Each coefficient corresponds to a lagged difference of the time series.
+
+2) Significance levels: The "Pr(>|t|)" column provides the p-values associated with each coefficient. Lower p-values indicate greater statistical significance. In this case, many of the coefficients are highly significant (p-value < 0.05), suggesting the presence of stationarity.
+
+3) Test statistics: The ADF test statistic value is -19.368. This value is compared to critical values to determine the stationarity of the series. In this case, the test statistic is much lower than the critical values, indicating strong evidence against the presence of a unit root (non-stationarity).
+
+4) Residual standard error: This represents the estimated standard deviation of the residuals in the ADF test regression model. In this example, the value is 4.797.
+
+5) R-squared and Adjusted R-squared: These metrics measure the goodness of fit of the ADF regression model. In this case, the values are very low, indicating that the model does not explain much of the variation in the data.
+
+6) F-statistic: This statistic measures the overall significance of the regression model. The p-value associated with the F-statistic is < 2.2e-16, indicating high statistical significance.
+
+In summary, the output suggests that the time series is stationary, as indicated by the significant coefficients and the low ADF test statistic. However, it's important to note that the R-squared value is very low, indicating that the ADF regression model might not be the best fit for explaining the variations in the data. Further analysis and consideration of other models may be necessary to fully understand the characteristics of the time series.
+
+```{r}
+# Plot line chart of S&P 500 index
+plot(ts_data, type = "l", main = "S&P 500 Index", xlab = "Date", ylab = "Price")
+
+# Plot candlestick chart of S&P 500 index (requires the 'quantmod' package)
+library(quantmod)
+
+sp500_xts <- xts(SP_500$close, order.by = SP_500$date)
+
+# Convert xts object to data frame
+sp500_df <- data.frame(Date = as.Date(index(sp500_xts)), Close = coredata(sp500_xts))
+
+# Plot price trends
+ggplot(data = sp500_df, aes(x = Date, y = Close)) +
+  geom_line() +
+  labs(x = "Date", y = "Close Price", title = "S&P 500 Index Price Trends")
+```
+
